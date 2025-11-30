@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import Login from './components/Auth/Login.jsx';
 import Register from './components/Auth/Register.jsx';
 import Dashboard from './components/Dashboard/Dashboard.jsx';
-import './App.css';
 
 function App() {
   const [currentView, setCurrentView] = useState('login');

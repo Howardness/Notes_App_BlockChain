@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
-import NoteCard from '../Notes/NoteCard';
+import NoteCard from '../notes/NoteCard';
 import NoteEditor from '../Notes/NoteEditor';
 import NoteViewer from '../Notes/NoteViewer';
 import WalletConnect from '../Wallet/WalletConnect';
 import { Plus, Search } from 'lucide-react';
-import './Dashboard.css';
 
 const Dashboard = ({ user, onLogout }) => {
   const [notes, setNotes] = useState([]);
-  const [filteredNotes, setFilteredNotes] = useState([]);
   const [currentCategory, setCurrentCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showEditor, setShowEditor] = useState(false);
@@ -18,29 +16,11 @@ const Dashboard = ({ user, onLogout }) => {
   const [selectedNote, setSelectedNote] = useState(null);
   const [editingNote, setEditingNote] = useState(null);
 
+  // Load notes from localStorage
   useEffect(() => {
     const savedNotes = JSON.parse(localStorage.getItem('notes') || '[]');
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setNotes(savedNotes);
+    setTimeout(() => setNotes(savedNotes), 0);
   }, []);
-
-  useEffect(() => {
-    let filtered = notes;
-
-    if (currentCategory !== 'all') {
-      filtered = filtered.filter(note => note.category === currentCategory);
-    }
-
-    if (searchQuery) {
-      filtered = filtered.filter(note =>
-        note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        note.content.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setFilteredNotes(filtered);
-  }, [notes, currentCategory, searchQuery]);
 
   const handleSaveNote = (noteData) => {
     let updatedNotes;
@@ -56,7 +36,7 @@ const Dashboard = ({ user, onLogout }) => {
         id: Date.now(),
         ...noteData,
         createdAt: new Date().toISOString(),
-        isPinned: false
+        isPinned: false,
       };
       updatedNotes = [newNote, ...notes];
     }
@@ -101,6 +81,18 @@ const Dashboard = ({ user, onLogout }) => {
     setShowEditor(true);
   };
 
+  // Compute filtered notes on the fly
+  const filteredNotes = notes.filter(note => {
+    if (currentCategory !== 'all' && note.category !== currentCategory) return false;
+    if (
+      searchQuery &&
+      !note.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !note.content.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+      return false;
+    return true;
+  });
+
   const pinnedNotes = filteredNotes.filter(note => note.isPinned);
   const unpinnedNotes = filteredNotes.filter(note => !note.isPinned);
 
@@ -109,7 +101,8 @@ const Dashboard = ({ user, onLogout }) => {
   }
 
   return (
-    <div className="dashboard">
+    <div className="flex h-screen bg-gray-100">
+      {/* Sidebar */}
       <Sidebar
         user={user}
         currentCategory={currentCategory}
@@ -118,32 +111,40 @@ const Dashboard = ({ user, onLogout }) => {
         onShowWallet={() => setShowWallet(true)}
       />
 
-      <div className="dashboard-main">
-        <div className="dashboard-header">
-          <div className="header-top">
-            <h1>My Notes</h1>
-            <button className="btn-primary" onClick={handleCreateNote}>
+      {/* Main Content */}
+      <div className="flex-1 overflow-y-auto p-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-3xl font-bold text-gray-900">My Notes</h1>
+            <button
+              onClick={handleCreateNote}
+              className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 hover:shadow-lg transform hover:-translate-y-1 transition"
+            >
               <Plus size={20} />
               New Note
             </button>
           </div>
 
-          <div className="search-bar">
-            <Search size={20} />
+          <div className="relative max-w-lg">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder="Search notes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full border-2 border-gray-200 rounded-lg py-2 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-500"
             />
           </div>
         </div>
 
-        <div className="notes-container">
+        {/* Notes Sections */}
+        <div className="space-y-12">
+          {/* Pinned Notes */}
           {pinnedNotes.length > 0 && (
-            <div className="notes-section">
-              <h2 className="section-title">Pinned</h2>
-              <div className="notes-grid">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">Pinned</h2>
+              <div className="grid gap-5 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                 {pinnedNotes.map(note => (
                   <NoteCard
                     key={note.id}
@@ -158,10 +159,11 @@ const Dashboard = ({ user, onLogout }) => {
             </div>
           )}
 
+          {/* Unpinned Notes */}
           {unpinnedNotes.length > 0 && (
-            <div className="notes-section">
-              {pinnedNotes.length > 0 && <h2 className="section-title">All Notes</h2>}
-              <div className="notes-grid">
+            <div>
+              {pinnedNotes.length > 0 && <h2 className="text-xl font-semibold text-gray-800 mb-4">All Notes</h2>}
+              <div className="grid gap-5 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                 {unpinnedNotes.map(note => (
                   <NoteCard
                     key={note.id}
@@ -176,11 +178,12 @@ const Dashboard = ({ user, onLogout }) => {
             </div>
           )}
 
+          {/* Empty State */}
           {filteredNotes.length === 0 && (
-            <div className="empty-state">
-              <div className="empty-icon">📝</div>
-              <h2>No Folder Found</h2>
-              <p>
+            <div className="text-center py-20">
+              <div className="text-6xl mb-4 opacity-50">📝</div>
+              <h2 className="text-2xl font-semibold text-gray-800 mb-2">No Notes Found</h2>
+              <p className="text-gray-500">
                 {searchQuery
                   ? 'Try a different search term'
                   : currentCategory === 'all'
@@ -192,6 +195,7 @@ const Dashboard = ({ user, onLogout }) => {
         </div>
       </div>
 
+      {/* Modals */}
       {showEditor && (
         <NoteEditor
           note={editingNote}
